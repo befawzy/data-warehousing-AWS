@@ -17,17 +17,21 @@ def insert_tables(cur, conn):
 
 def main():
     config = configparser.ConfigParser()
-    config.read('dwh.ini')
+    config.read("dwh.ini")
 
     HOST = config.get("CLUSTER", "HOST")
     DB = config.get("CLUSTER", "DB")
     DB_USER = config.get("CLUSTER", "DB_USER")
     DB_PASSWORD = config.get("CLUSTER", "DB_PASSWORD")
     PORT = config.get("CLUSTER", "PORT")
-    
-    conn = psycopg2.connect("host={} dbname={} user={} password={} port={}".format(HOST, DB, DB_USER, DB_PASSWORD, PORT))
+
+    conn = psycopg2.connect(
+        "host={} dbname={} user={} password={} port={}".format(
+            HOST, DB, DB_USER, DB_PASSWORD, PORT
+        )
+    )
     cur = conn.cursor()
-    
+
     load_staging_tables(cur, conn)
     insert_tables(cur, conn)
 

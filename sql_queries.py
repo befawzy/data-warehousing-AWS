@@ -3,7 +3,6 @@ import configparser
 # CONFIG
 config = configparser.ConfigParser()
 config.read("dwh.ini")
-ARN = config.get("IAM_ROLE", "ARN")
 IAM = config.get("IAM_ROLE", "ROLE_NAME")
 LOG_DATA_LOCATION = config.get("S3", "LOG_DATA")
 LOG_JSONPATH = config.get("S3", "LOG_JSONPATH")
@@ -13,13 +12,13 @@ UDACITY_DATA_REGION = config.get("S3", "UDACITY_DATA_REGION")
 
 # DROP TABLES
 
-staging_events_table_drop = "DROP TABLE IF EXISTS staging_events"
-staging_songs_table_drop = "DROP TABLE IF EXISTS staging_songs"
-songplay_table_drop = "DROP TABLE IF EXISTS songplay"
-user_table_drop = "DROP TABLE IF EXISTS user"
-song_table_drop = "DROP TABLE IF EXISTS song"
-artist_table_drop = "DROP TABLE IF EXISTS artist"
-time_table_drop = "DROP TABLE IF EXISTS time"
+staging_events_table_drop = "DROP TABLE IF EXISTS staging_events;"
+staging_songs_table_drop = "DROP TABLE IF EXISTS staging_songs;"
+songplay_table_drop = "DROP TABLE IF EXISTS songplay;"
+users_table_drop = "DROP TABLE IF EXISTS users;"
+song_table_drop = "DROP TABLE IF EXISTS song;"
+artist_table_drop = "DROP TABLE IF EXISTS artist;"
+time_table_drop = "DROP TABLE IF EXISTS time;"
 
 # CREATE TABLES
 
@@ -66,7 +65,7 @@ songplay_table_create = """CREATE TABLE IF NOT EXISTS songplay
 (
  songplay_id    VARCHAR(MAX) PRIMARY KEY,
  start_time     TIMESTAMP REFERENCES time(start_time) NOT NULL,
- user_id        VARCHAR(MAX) REFERENCES user(user_id) NOT NULL,
+ user_id        VARCHAR(MAX) REFERENCES users(user_id) NOT NULL,
  level          VARCHAR(MAX),
  song_id        VARCHAR(MAX) REFERENCES song(song_id) NOT NULL,
  artist_id      VARCHAR(MAX) REFERENCES artist(artist_id) NOT NULL,
@@ -79,7 +78,7 @@ SORTKEY(start_time)
 ;
 """
 
-user_table_create = """CREATE TABLE IF NOT EXISTS user 
+users_table_create = """CREATE TABLE IF NOT EXISTS users 
 (
  user_id        VARCHAR(MAX) PRIMARY KEY,
  first_name     VARCHAR(MAX),
@@ -118,7 +117,7 @@ DISTKEY(artist_id)
 SORTKEY(artist_id);
 """
 
-time_table_create = """CREATE TABLE IF NOT EXISTS time 
+time_table_create = """CREATE TABLE IF NOT EXISTS time
 (
  start_time     TIMESTAMP PRIMARY KEY,
  hour           INTEGER,
@@ -129,8 +128,9 @@ time_table_create = """CREATE TABLE IF NOT EXISTS time
  weekday        INTEGER
 )
 DISTKEY(start_time)
-SORTKEY(start_time);
+SORTKEY(start_time, year, month, week, day, weekday, hour);
 """
+
 
 # STAGING TABLES
 
@@ -138,19 +138,17 @@ staging_events_copy = (
     """
 COPY staging_events from '{}'
 iam_role '{}'
-gzip region '{}' 
 json '{}'
 """
-).format(LOG_DATA_LOCATION, IAM, UDACITY_DATA_REGION, LOG_JSONPATH)
+).format(LOG_DATA_LOCATION, IAM, LOG_JSONPATH)
 
 staging_songs_copy = (
     """
 COPY staging_songs from '{}'
 iam_role '{}'
-gzip region '{}'
 json 'auto'
 """
-).format(SONG_DATA_LOCATION, IAM, UDACITY_DATA_REGION)
+).format(SONG_DATA_LOCATION, IAM)
 
 # FINAL TABLES (Star Schema)
 songplay_table_insert = """INSERT INTO songplay 
@@ -164,7 +162,7 @@ SELECT CONCAT(song_id,session_id,item_in_session) as songplay_id, to_timestamp(t
 );
 """
 
-user_table_insert = """INSERT INTO user
+users_table_insert = """INSERT INTO users
 (
 SELECT user_id, first_name, last_name, gender, level
 FROM staging_events WHERE user_id NOT IN (SELECT user_id FROM user)
@@ -212,17 +210,17 @@ FROM staging_events WHERE start_time NOT IN (SELECT start_time FROM initial_time
 create_table_queries = [
     staging_events_table_create,
     staging_songs_table_create,
-    songplay_table_create,
-    user_table_create,
+    users_table_create,
     song_table_create,
     artist_table_create,
     time_table_create,
+    songplay_table_create,
 ]
 drop_table_queries = [
     staging_events_table_drop,
     staging_songs_table_drop,
     songplay_table_drop,
-    user_table_drop,
+    users_table_drop,
     song_table_drop,
     artist_table_drop,
     time_table_drop,
@@ -230,7 +228,7 @@ drop_table_queries = [
 copy_table_queries = [staging_events_copy, staging_songs_copy]
 insert_table_queries = [
     songplay_table_insert,
-    user_table_insert,
+    users_table_insert,
     song_table_insert,
     artist_table_insert,
     time_table_insert,
